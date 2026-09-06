@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only used for the window before Compose takes over. Compose draws the real theme. -->
+    <style name="Theme.Dengar" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
