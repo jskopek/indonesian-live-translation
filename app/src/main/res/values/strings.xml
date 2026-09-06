@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Dengar</string>
     <string name="placeholder_title">Dengar</string>
-    <string name="placeholder_body">Live Indonesian to English translation. Nothing here yet.</string>
+    <string name="placeholder_body">Live Indonesian to English translation. Update pipeline confirmed.</string>
 </resources>
