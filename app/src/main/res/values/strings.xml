@@ -1,15 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Dengar</string>
-    <string name="start_listening">Start listening</string>
-    <string name="stop_listening">Stop listening</string>
-    <string name="clear_transcript">Clear transcript</string>
-    <string name="status_idle">Tap the microphone and hold the phone toward whoever is speaking.</string>
-    <string name="status_listening">Listening for Indonesian…</string>
+
+    <!-- Live screen -->
+    <string name="start_recording">Start listening</string>
+    <string name="stop_recording">Stop</string>
+    <string name="finishing">Finishing…</string>
+    <string name="clear_transcript">Clear</string>
+    <string name="history">Past conversations</string>
+    <string name="settings">Settings</string>
+    <string name="status_idle">Tap the microphone and hold the phone toward whoever is speaking. The conversation is recorded so you can replay it slowly later.</string>
+    <string name="status_connecting">Connecting to the transcription service…</string>
+    <string name="status_live">Listening · %1$s</string>
+    <string name="status_reconnecting">Recording continues; reconnecting to the transcription service… · %1$s</string>
+    <string name="need_api_key">Add your OpenAI API key in Settings before listening.</string>
+    <string name="open_settings">Open settings</string>
     <string name="model_downloading">Downloading the Indonesian → English model (about 30 MB, once)…</string>
     <string name="model_failed">Couldn\'t download the translation model: %1$s</string>
     <string name="retry">Retry</string>
-    <string name="speech_unavailable">This phone has no speech recognition service. Install or enable the Google app.</string>
-    <string name="permission_denied">Dengar needs the microphone to hear Indonesian. Allow it in system settings.</string>
     <string name="translating">Translating…</string>
+    <string name="permission_denied">Dengar needs the microphone to hear Indonesian. Allow it in system settings.</string>
+    <string name="transcription_lost">Transcription dropped (%1$s). Still recording; reconnecting.</string>
+    <string name="transcription_failed">Transcription failed: %1$s</string>
+    <string name="saved_conversation">Saved. Find it under past conversations.</string>
+
+    <!-- History -->
+    <string name="history_empty">No conversations yet. Everything you listen to is saved here with its recording.</string>
+    <string name="history_no_speech">(no speech recognised)</string>
+    <string name="history_summary">%1$s · %2$d lines</string>
+    <string name="back">Back</string>
+
+    <!-- Playback -->
+    <string name="playback_missing">The recording file for this conversation is missing.</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="repeat_line">Repeat this line</string>
+    <string name="repeat_on">Repeating the highlighted line. Tap again to stop.</string>
+    <string name="speed">Speed</string>
+    <string name="delete_conversation">Delete conversation</string>
+    <string name="delete_confirm_title">Delete this conversation?</string>
+    <string name="delete_confirm_body">The recording and transcript will be removed from the phone.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="tap_line_hint">Tap any line to hear it. Use the speed chips to slow the speaker down.</string>
+
+    <!-- Settings -->
+    <string name="api_key_label">OpenAI API key</string>
+    <string name="api_key_help">Used for live transcription (and later for summaries). Stored only on this phone. Create one at platform.openai.com → API keys.</string>
+    <string name="show_key">Show key</string>
+    <string name="hide_key">Hide key</string>
+    <string name="transcription_model">Transcription model</string>
+    <string name="save">Save</string>
+    <string name="settings_saved">Settings saved.</string>
 </resources>

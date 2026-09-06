@@ -16,9 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
@@ -47,18 +49,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import ca.skopek.dengar.BuildConfig
+import ca.skopek.dengar.Connection
+import ca.skopek.dengar.LiveUiState
 import ca.skopek.dengar.R
-import ca.skopek.dengar.UiState
 import ca.skopek.dengar.transcript.Segment
 import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TranslatorScreen(
-    state: UiState,
+fun LiveScreen(
+    state: LiveUiState,
     level: StateFlow<Float>,
-    onToggleListening: () -> Unit,
-    onClear: () -> Unit,
+    onToggleRecording: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
     onRetryModel: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
@@ -68,8 +72,8 @@ fun TranslatorScreen(
 
     // Keep the screen on while the phone is being held up to listen.
     val view = LocalView.current
-    DisposableEffect(state.listening) {
-        view.keepScreenOn = state.listening
+    DisposableEffect(state.recording) {
+        view.keepScreenOn = state.recording
         onDispose { view.keepScreenOn = false }
     }
 
@@ -79,10 +83,10 @@ fun TranslatorScreen(
         onDismissNotice()
     }
 
-    // Follow the conversation: newest text stays in view.
-    val itemCount = transcript.segments.size + if (transcript.partialIndonesian.isNotBlank()) 1 else 0
-    LaunchedEffect(itemCount, transcript.partialIndonesian.length) {
-        if (itemCount > 0) listState.animateScrollToItem(itemCount - 1)
+    // Follow the conversation: the newest text stays in view.
+    val lastText = transcript.segments.lastOrNull()?.indonesian.orEmpty()
+    LaunchedEffect(transcript.segments.size, lastText.length) {
+        if (transcript.segments.isNotEmpty()) listState.animateScrollToItem(transcript.segments.size - 1)
     }
 
     Scaffold(
@@ -91,10 +95,11 @@ fun TranslatorScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    if (!transcript.isEmpty) {
-                        IconButton(onClick = onClear) {
-                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.clear_transcript))
-                        }
+                    IconButton(onClick = onOpenHistory, enabled = !state.recording) {
+                        Icon(Icons.Filled.History, contentDescription = stringResource(R.string.history))
+                    }
+                    IconButton(onClick = onOpenSettings, enabled = !state.recording) {
+                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
                     }
                 },
             )
@@ -103,19 +108,21 @@ fun TranslatorScreen(
             SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
         },
         floatingActionButton = {
-            if (state.speechAvailable) {
-                LargeFloatingActionButton(
-                    onClick = onToggleListening,
-                    containerColor = if (state.listening) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        MaterialTheme.colorScheme.primaryContainer
-                    },
-                ) {
+            LargeFloatingActionButton(
+                onClick = { if (!state.finishing) onToggleRecording() },
+                containerColor = if (state.recording) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                },
+            ) {
+                if (state.finishing) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                } else {
                     Icon(
-                        imageVector = if (state.listening) Icons.Filled.Stop else Icons.Filled.Mic,
+                        imageVector = if (state.recording) Icons.Filled.Stop else Icons.Filled.Mic,
                         contentDescription = stringResource(
-                            if (state.listening) R.string.stop_listening else R.string.start_listening,
+                            if (state.recording) R.string.stop_recording else R.string.start_recording,
                         ),
                         modifier = Modifier.size(36.dp),
                     )
@@ -129,10 +136,10 @@ fun TranslatorScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            StatusBanner(state = state, onRetryModel = onRetryModel)
+            StatusBanner(state = state, onRetryModel = onRetryModel, onOpenSettings = onOpenSettings)
 
             if (transcript.isEmpty) {
-                EmptyState(listening = state.listening, modifier = Modifier.weight(1f))
+                EmptyState(state = state, modifier = Modifier.weight(1f))
             } else {
                 LazyColumn(
                     state = listState,
@@ -145,26 +152,25 @@ fun TranslatorScreen(
                     items(transcript.segments, key = { it.id }) { segment ->
                         SegmentRow(segment = segment)
                     }
-                    if (transcript.partialIndonesian.isNotBlank()) {
-                        item(key = "partial") {
-                            PartialRow(
-                                indonesian = transcript.partialIndonesian,
-                                english = transcript.partialEnglish,
-                            )
-                        }
-                    }
                 }
             }
 
-            LevelMeter(level = level, listening = state.listening)
+            LevelMeter(level = level, active = state.recording && !state.finishing)
         }
     }
 }
 
 @Composable
-private fun StatusBanner(state: UiState, onRetryModel: () -> Unit) {
+private fun StatusBanner(state: LiveUiState, onRetryModel: () -> Unit, onOpenSettings: () -> Unit) {
+    val clock = formatClock(state.elapsedMs)
     val message: String? = when {
-        !state.speechAvailable -> stringResource(R.string.speech_unavailable)
+        !state.hasApiKey -> stringResource(R.string.need_api_key)
+        state.finishing -> stringResource(R.string.finishing)
+        state.recording -> when (state.connection) {
+            Connection.Connecting, Connection.Idle -> stringResource(R.string.status_connecting)
+            Connection.Live -> stringResource(R.string.status_live, clock)
+            Connection.Reconnecting -> stringResource(R.string.status_reconnecting, clock)
+        }
         state.modelError != null -> stringResource(R.string.model_failed, state.modelError)
         !state.modelReady -> stringResource(R.string.model_downloading)
         else -> null
@@ -182,18 +188,19 @@ private fun StatusBanner(state: UiState, onRetryModel: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
-        if (state.modelError != null) {
-            TextButton(onClick = onRetryModel) { Text(stringResource(R.string.retry)) }
+        when {
+            !state.hasApiKey -> TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.open_settings)) }
+            !state.recording && state.modelError != null -> TextButton(onClick = onRetryModel) { Text(stringResource(R.string.retry)) }
         }
     }
 }
 
 @Composable
-private fun EmptyState(listening: Boolean, modifier: Modifier = Modifier) {
+private fun EmptyState(state: LiveUiState, modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(if (listening) R.string.status_listening else R.string.status_idle),
+                text = stringResource(if (state.recording) R.string.status_live else R.string.status_idle, formatClock(state.elapsedMs)),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -208,54 +215,38 @@ private fun EmptyState(listening: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SegmentRow(segment: Segment) {
+fun SegmentRow(segment: Segment, highlighted: Boolean = false) {
+    val pending = !segment.isFinal
     Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+        val english = segment.english
         Text(
-            text = segment.english ?: stringResource(R.string.translating),
+            text = english ?: if (pending) segment.indonesian else stringResource(R.string.translating),
             style = MaterialTheme.typography.headlineSmall,
-            color = if (segment.english != null) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.outline
+            fontStyle = if (pending) FontStyle.Italic else FontStyle.Normal,
+            color = when {
+                highlighted -> MaterialTheme.colorScheme.primary
+                english == null && !pending -> MaterialTheme.colorScheme.outline
+                pending -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.onSurface
             },
         )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = segment.indonesian,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun PartialRow(indonesian: String, english: String) {
-    Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
-        if (english.isNotBlank()) {
-            Text(
-                text = english,
-                style = MaterialTheme.typography.headlineSmall,
-                fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
+        if (english != null || !pending) {
             Spacer(Modifier.height(4.dp))
+            Text(
+                text = segment.indonesian,
+                style = MaterialTheme.typography.bodyMedium,
+                fontStyle = if (pending) FontStyle.Italic else FontStyle.Normal,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        Text(
-            text = indonesian,
-            style = MaterialTheme.typography.bodyMedium,
-            fontStyle = FontStyle.Italic,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-        )
     }
 }
 
 @Composable
-private fun LevelMeter(level: StateFlow<Float>, listening: Boolean) {
-    val rmsDb by level.collectAsState()
-    // The recogniser reports roughly -2 dB (silence) to 10 dB (loud speech).
-    val fraction = ((rmsDb + 2f) / 12f).coerceIn(0f, 1f)
+private fun LevelMeter(level: StateFlow<Float>, active: Boolean) {
+    val fraction by level.collectAsState()
     LinearProgressIndicator(
-        progress = { if (listening) fraction else 0f },
+        progress = { if (active) fraction else 0f },
         modifier = Modifier.fillMaxWidth().height(3.dp),
         trackColor = Color.Transparent,
     )

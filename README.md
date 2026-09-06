@@ -1,8 +1,17 @@
 # Dengar
 
-Live Indonesian → English translation for a phone held up in a conversation. One mode only:
-listen to spoken Indonesian, show English on screen, and eventually a running gist of what is
-being said, a slowed-down replay of recorded conversations, and a word bank built from them.
+Live Indonesian → English translation for a phone held up in a conversation, plus a voice
+recorder for every conversation so it can be replayed slowly afterwards.
+
+- **Listen**: tap the mic. Audio is streamed to OpenAI's Realtime transcription API
+  (Indonesian, `gpt-4o-transcribe`) and each utterance is translated on-device with ML Kit.
+  English is shown large, the Indonesian underneath.
+- **Record**: the same audio is saved as a 24 kHz WAV next to a timestamped transcript in
+  `filesDir/conversations/<id>/`, so the original voice is always there when the transcript is wrong.
+- **Replay**: past conversations play back at 0.5×–1×; tap a line to hear it, repeat a line on loop.
+- **Settings**: paste an OpenAI API key once. It never leaves the phone.
+
+Later: a running gist of what is being said, and a word bank built from real conversations.
 
 `applicationId`: `ca.skopek.dengar`
 
@@ -28,4 +37,6 @@ Local `assembleRelease` builds without these variables fall back to the debug ke
 ## Development
 
 The pipeline and conventions follow [docs/new-android-app-playbook.md](docs/new-android-app-playbook.md).
-The remote sandbox cannot build Android; GitHub Actions is the compiler.
+The remote sandbox cannot build Android; GitHub Actions is the compiler. Pure-Kotlin packages
+(`transcript`, `audio` minus `AudioCapture`, `realtime` minus `RealtimeTranscriber`, `store`) are
+unit tested locally with a throwaway Kotlin/JVM project before every push.

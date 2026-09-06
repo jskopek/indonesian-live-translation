@@ -8,11 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import ca.skopek.dengar.ui.TranslatorScreen
+import ca.skopek.dengar.ui.DengarApp
 import ca.skopek.dengar.ui.theme.DengarTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,29 +18,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val viewModel: TranslatorViewModel = viewModel()
-            val state by viewModel.uiState.collectAsStateWithLifecycle()
+            val viewModel: DengarViewModel = viewModel()
 
             val permissionLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission(),
             ) { granted ->
-                if (granted) viewModel.toggleListening() else viewModel.showPermissionDenied()
+                if (granted) viewModel.toggleRecording() else viewModel.showPermissionDenied()
             }
 
             DengarTheme {
-                TranslatorScreen(
-                    state = state,
-                    level = viewModel.level,
-                    onToggleListening = {
+                DengarApp(
+                    viewModel = viewModel,
+                    onToggleRecording = {
                         if (hasMicrophonePermission()) {
-                            viewModel.toggleListening()
+                            viewModel.toggleRecording()
                         } else {
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
-                    onClear = viewModel::clearTranscript,
-                    onRetryModel = viewModel::retryModel,
-                    onDismissNotice = viewModel::dismissNotice,
                 )
             }
         }
