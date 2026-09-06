@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Dengar</string>
-    <string name="placeholder_title">Dengar</string>
-    <string name="placeholder_body">Live Indonesian to English translation. Update pipeline confirmed.</string>
+    <string name="start_listening">Start listening</string>
+    <string name="stop_listening">Stop listening</string>
+    <string name="clear_transcript">Clear transcript</string>
+    <string name="status_idle">Tap the microphone and hold the phone toward whoever is speaking.</string>
+    <string name="status_listening">Listening for Indonesian…</string>
+    <string name="model_downloading">Downloading the Indonesian → English model (about 30 MB, once)…</string>
+    <string name="model_failed">Couldn\'t download the translation model: %1$s</string>
+    <string name="retry">Retry</string>
+    <string name="speech_unavailable">This phone has no speech recognition service. Install or enable the Google app.</string>
+    <string name="permission_denied">Dengar needs the microphone to hear Indonesian. Allow it in system settings.</string>
+    <string name="translating">Translating…</string>
 </resources>
